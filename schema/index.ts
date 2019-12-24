@@ -29,7 +29,7 @@ const ToneRegister: Field = {
 
 const TextField: Field = {
   type: EntityType.PRIMITIVE,
-  name: 'text',
+  name: 'string',
   cardinality: Cardinality.SINGLE,
   validate: value => typeof value === 'string',
 }

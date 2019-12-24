@@ -1,20 +1,31 @@
-import http from 'http';
-import buildTables from './schema/build-tables';
+import path from 'path'
+import express from 'express'
 
-const hostname = '127.0.0.1';
-const port = 3000;
+import buildTables from './schema/build-tables'
+
+const app = express()
+const port = 3000
+
+const options = process.argv.slice(2)
 
 const pg = require('knex')({
   client: 'pg',
   connection: 'postgresql://localhost:5432/lang_builder',
 });
 
-const server = http.createServer((req, res) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello World\n');
-});
+app.use(express.static(path.join(__dirname, 'dist/')));
 
-server.listen(port, hostname, () => {
-  buildTables(pg);
-});
+app.get('/', (req, res) => {
+   res.sendFile(__dirname + 'dist/index.html');
+})
+
+if (options[0] === '--setup') {
+  buildTables(pg)
+} else {
+  app.listen(port, err => {
+    if (err) {
+      console.log('LANG_BUILDER: ', err)
+    }
+    console.log(`LANG_BUILDER: server listening on ${port}`)
+  });
+}

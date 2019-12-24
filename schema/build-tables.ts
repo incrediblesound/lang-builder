@@ -2,137 +2,120 @@ import {
   Entity,
   EntityType,
   Field,
-  Property,
-  Schema,
 } from './types';
 import schema from './index';
 
-export default pg => {
+
+export default async pg => {
   const entities = Object
     .values(schema)
     .filter((val: Entity | Field): boolean => val instanceof Entity)
 
-  processEntity(pg, entities, () => {
-    processRelationship(pg, RELS, () => {
-      console.log('FINISHED BUILDING TABLES')
-    })
-  })
-
-
-  function processEntity(pg, entities, finalCallback) {
-    let current = entities.pop()
-    if (current) {
-      buildTable(pg, current, () => processEntity(pg, entities, finalCallback))
-    } else {
-      finalCallback()
-    }
-  }
-
-  function processRelationship(pg, rels, finalCallback){
-    let currentArgs = rels.pop()
-    if (currentArgs) {
-      currentArgs.push(() => {
-        processRelationship(pg, rels, finalCallback)
-      })
-      buildRelationship.apply(this, currentArgs);
-    } else {
-      finalCallback
-    }
-  }
+  await makeTables(pg, entities)
+  await makeColumns(pg, entities)
+  console.log('LANG_BUILDER: ~ finished building database ~')
 }
 
-const RELS: any[] = [];
-
-const buildTable = (pg, schemaEntity: Entity, cb): void => {
-  pg.schema.hasTable(schemaEntity.name).then(exists => {
+async function makeTables(pg, entities) {
+  let newTable;
+  let tablesToCreate = entities.slice()
+  while (tablesToCreate.length) {
+    newTable = tablesToCreate.pop()
+    const exists = await pg.schema.hasTable(newTable.name)
     if (!exists) {
-      pg.schema.createTable(schemaEntity.name, table => {
+      await pg.schema.createTable(newTable.name, table => {
         table.increments('id').primary()
-        addColumns(pg, table, schemaEntity)
-      }).then(cb)
-    } else {
-      pg.schema.table(schemaEntity.name, table => {
-        addColumns(pg, table, schemaEntity)
-      }).then(cb)
+      })
+      console.log(`LANG_BUILDER: ~ table ${newTable.name} added ~`)
     }
-  });
-
-  const addColumns = (pg, table, schemaEntity: Entity): void => {
-    schemaEntity.properties.forEach(prop => {
-      buildColumn(pg, prop, table, schemaEntity, schema)
-    })
   }
 }
 
-const buildColumn = (pg, prop: Property, table, schemaEntity: Entity, schema: Schema): void => {
-  let key = prop.key
-  let value = prop.value
-  let oneToMany = false
-  if (value.substring(value.length-2) === '[]') {
-    value = value.substring(0, value.length-2)
-    console.log(prop)
-    oneToMany = true
-  } else {
-    value = value
+async function makeColumns(pg, entities) {
+  let tableToUpdate;
+  let tablesToUpdate = entities.slice()
+  while (tablesToUpdate.length) {
+    tableToUpdate = tablesToUpdate.pop()
+    await updateTableWithColumns(pg, tableToUpdate)
   }
-  pg.schema.hasColumn(schemaEntity.name, key).then(exists => {
+}
+
+async function updateTableWithColumns(pg, tableToUpdate: Entity) {
+  let columnToAdd;
+  let columnsToAdd = tableToUpdate.properties.slice()
+  while (columnsToAdd.length) {
+    columnToAdd = columnsToAdd.pop()
+    let columnName = columnToAdd.key
+    let columnType = columnToAdd.value
+    let oneToMany = false
+    if (columnTypeIsMultipleCardinality(columnType)) {
+      columnType = removeCardinalityDecorator(columnType)
+      oneToMany = true
+    }
+    const exists = await pg.schema.hasColumn(tableToUpdate.name, columnName)
     if (!exists) {
-      const entity = schema[value];
-      if (entity instanceof Entity) {
-        // entity is a class so this column is a foreign key
-        RELS.push([pg, key, schemaEntity, entity, oneToMany]);
+      const columnTypeDefinition = schema[columnType];
+      if (columnTypeDefinition instanceof Entity) {
+        await addForeignKey(pg, columnToAdd, tableToUpdate, columnTypeDefinition, oneToMany)
       } else {
-        // entity is a field so this is a normal column
-        switch(entity.type) {
-          case EntityType.PRIMITIVE:
-            table[entity.name](key);
-          case EntityType.ENUM:
-            table.specificType(key, 'text[]')
-        }
+        await pg.schema.table(tableToUpdate.name, table => {
+          switch(columnTypeDefinition.type) {
+            case EntityType.PRIMITIVE:
+              table[columnTypeDefinition.name](columnName);
+              break;
+            case EntityType.ENUM:
+              table.specificType(columnName, 'text[]')
+              break;
+          }
+        })
       }
     }
-  })
-}
-
-const buildRelationship = (pg, key, entityOne, entityTwo, oneToMany, cb) => {
-  if (!oneToMany) {
-    pg.schema.hasColumn(entityOne.name, key).then(exists => {
-      if (!exists) {
-        pg.schema.table(entityOne.name, table => {
-          table
-            .biginteger(key)
-            .unsigned()
-            .notNullable()
-            .references('id')
-            .inTable(entityTwo.name)
-            .onDelete('CASCADE')
-            .index();
-        }).then(cb)
-      }
-    })
-  } else {
-    const relationName = `${entityOne.name}__${entityTwo.name}`;
-    pg.schema.hasTable(relationName).then(exists => {
-      if (!exists) {
-        pg.schema.createTable(relationName, newTable => {
-          newTable
-            .biginteger(entityOne.name)
-            .unsigned()
-            .notNullable()
-            .references('id')
-            .inTable(entityTwo.name)
-            .onDelete('CASCADE')
-            .index();
-          newTable
-            .biginteger(entityTwo.name)
-            .unsigned()
-            .notNullable()
-            .references('id')
-            .inTable(entityOne.name)
-            .onDelete('CASCADE')
-            .index();
-        }).then(cb)
-      }
-    })
+    console.log(`LANG_BUILDER: ~ column ${columnName} of ${tableToUpdate.name} added ~`)
   }
 }
+
+async function addForeignKey(pg, columnToAdd, tableToUpdate, columnTypeDefinition, oneToMany) {
+  if (!oneToMany) {
+    await pg.schema.table(tableToUpdate.name, table => {
+      table
+        .biginteger(columnToAdd.key)
+        .unsigned()
+        .notNullable()
+        .references('id')
+        .inTable(columnTypeDefinition.name)
+        .onDelete('CASCADE')
+        .index();
+    })
+  } else {
+    const relationName = buildRelationshipTableName(tableToUpdate, columnTypeDefinition)
+    const exists = await pg.schema.hasTable(relationName)
+    if (!exists) {
+      await pg.schema.createTable(relationName, newTable => {
+        newTable
+          .biginteger(tableToUpdate.name)
+          .unsigned()
+          .notNullable()
+          .references('id')
+          .inTable(columnTypeDefinition.name)
+          .onDelete('CASCADE')
+          .index();
+        newTable
+          .biginteger(columnTypeDefinition.name)
+          .unsigned()
+          .notNullable()
+          .references('id')
+          .inTable(tableToUpdate.name)
+          .onDelete('CASCADE')
+          .index();
+      })
+    }
+  }
+}
+
+const columnTypeIsMultipleCardinality = columnType => 
+  columnType.substring(columnType.length-2) === '[]';
+
+const removeCardinalityDecorator = columnType => 
+  columnType.substring(0, columnType.length-2);
+
+const buildRelationshipTableName = (tableOne, tableTwo) => `${tableOne.name}__${tableTwo.name}`;

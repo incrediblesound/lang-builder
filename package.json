@@ -18,6 +18,7 @@
   "dependencies": {
     "@types/knex": "^0.16.1",
     "@types/node": "^12.12.21",
+    "express": "^4.17.1",
     "knex": "^0.20.4",
     "pg": "^7.15.1",
     "react": "^16.12.0",
