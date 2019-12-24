@@ -12,11 +12,11 @@ const pg = require('knex')({
   client: 'pg',
   connection: 'postgresql://localhost:5432/lang_builder',
 });
-
+console.log(__dirname)
 app.use(express.static(path.join(__dirname, 'dist/')));
 
 app.get('/', (req, res) => {
-   res.sendFile(__dirname + 'dist/index.html');
+   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 })
 
 if (options[0] === '--setup') {

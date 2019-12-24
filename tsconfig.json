@@ -10,5 +10,6 @@
     "strictNullChecks": true,
     "noUnusedLocals": true,
     "noErrorTruncation": true,
+    "jsx": "react"
   }
 }
