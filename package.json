@@ -1,0 +1,29 @@
+{
+  "name": "lang-builder",
+  "version": "1.0.0",
+  "description": "Conlang toolset",
+  "main": "server.js",
+  "scripts": {
+    "test": "yarn test",
+    "build": "webpack --mode development",
+    "dev": "node dist/server.js"
+  },
+  "keywords": [
+    "conlang",
+    "language",
+    "builder"
+  ],
+  "author": "James H Edwards",
+  "license": "MIT",
+  "dependencies": {
+    "@types/knex": "^0.16.1",
+    "@types/node": "^12.12.21",
+    "knex": "^0.20.4",
+    "pg": "^7.15.1",
+    "react": "^16.12.0",
+    "ts-loader": "^6.2.1",
+    "typescript": "^3.7.4",
+    "webpack": "^4.41.4",
+    "webpack-cli": "^3.3.10"
+  }
+}
