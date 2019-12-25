@@ -1,42 +1,37 @@
 import {
   Entity,
-  EntityType,
+  FieldType,
   Field,
   Cardinality,
   Schema,
 } from './types';
 
 const LetterPosition: Field = {
-  type: EntityType.ENUM,
-  name: 'letter_position',
+  type: FieldType.STRING_ENUM,
   cardinality: Cardinality.SINGLE,
   validate: value => [ 'initial', 'middle', 'final' ].indexOf(value) !== -1,
 }
 
 const MorphemePosition: Field = {
-  type: EntityType.ENUM,
-  name: 'morpheme_position',
+  type: FieldType.STRING_ENUM,
   cardinality: Cardinality.MULTIPLE,
   validate: value => [ 'prefix', 'root', 'suffix' ].indexOf(value) !== -1,
 }
 
 const ToneRegister: Field = {
-  type: EntityType.ENUM,
-  name: 'tone_register',
+  type: FieldType.STRING_ENUM,
   cardinality: Cardinality.SINGLE,
   validate: value => [ 'low', 'low-mid', 'mid', 'hi-mid', 'hi' ].indexOf(value) !== -1,
 }
 
 const TextField: Field = {
-  type: EntityType.PRIMITIVE,
-  name: 'string',
+  type: FieldType.STRING,
   cardinality: Cardinality.SINGLE,
   validate: value => typeof value === 'string',
 }
 
 const NumberField: Field = {
-  type: EntityType.PRIMITIVE,
-  name: 'integer',
+  type: FieldType.NUMBER,
   cardinality: Cardinality.SINGLE,
   validate: value => typeof value === 'number',
 }

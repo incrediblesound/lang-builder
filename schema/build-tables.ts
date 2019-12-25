@@ -1,7 +1,8 @@
 import {
   Entity,
-  EntityType,
+  FieldType,
   Field,
+  Cardinality,
 } from './types';
 import schema from './index';
 
@@ -60,11 +61,21 @@ async function updateTableWithColumns(pg, tableToUpdate: Entity) {
       } else {
         await pg.schema.table(tableToUpdate.name, table => {
           switch(columnTypeDefinition.type) {
-            case EntityType.PRIMITIVE:
-              table[columnTypeDefinition.name](columnName);
+            case FieldType.STRING:
+            case FieldType.STRING_ENUM:
+              if (columnTypeDefinition.cardinality === Cardinality.MULTIPLE) {
+                table.specificType(columnName, 'text[]')
+              } else {
+                table.string(columnName)
+              }
               break;
-            case EntityType.ENUM:
-              table.specificType(columnName, 'text[]')
+            case FieldType.NUMBER:
+            case FieldType.NUMBER_ENUM:
+              if (columnTypeDefinition.cardinality === Cardinality.MULTIPLE) {
+                table.specificType(columnName, 'int[]')
+              } else {
+                table.integer(columnName)
+              }
               break;
           }
         })

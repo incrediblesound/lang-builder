@@ -7,6 +7,12 @@ import {
   Link
 } from "react-router-dom";
 
+import Home from './pages/Home'
+
+import Store from './controllers/store'
+
+const store = Store();
+
 const App = () => {
   return (
     <Router>
@@ -32,7 +38,7 @@ const App = () => {
             <p>users</p>
           </Route>
           <Route path="/">
-            <p>home</p>
+            <Home store={store} />
           </Route>
         </Switch>
       </div>

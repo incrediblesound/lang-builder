@@ -1,4 +1,4 @@
-export enum EntityType { CLASS=1, PRIMITIVE=2, ENUM=3, }
+export enum FieldType { STRING=1, NUMBER=2, STRING_ENUM=3, NUMBER_ENUM=4 }
 export enum Cardinality { SINGLE=1, MULTIPLE=2, }
 
 export class Entity {
@@ -11,8 +11,7 @@ export class Entity {
 }
 
 export interface Field {
-  type: EntityType;
-  name: string;
+  type: FieldType;
   cardinality: Cardinality;
   validate(v: any): boolean;
 }
